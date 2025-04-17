@@ -8,72 +8,166 @@
   PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-<title>XML Bible Demo - MVNU</title>
+<title>XML Bible Lookup</title>
 <script type="text/javascript">
 function setup() {
-  if (window.XMLHttpRequest)
-    {// code for IE7+, Firefox, Chrome, Opera, Safari
-    xmlhttp = new XMLHttpRequest();
-    }
-  else
+	if (window.XMLHttpRequest)
+	{// code for IE7+, Firefox, Chrome, Opera, Safari
+		xmlhttp = new XMLHttpRequest();
+	}
+	else
     {// code for IE6, IE5
-    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
     }
-  // location of XML Bible files, must be on same web server
-  // that hosts this web page to avoid Cross-Domain request restrictions
-  biblePath = "/class/csc3004/XMLBible/"
+	// location of XML Bible files, must be on same web server
+	// that hosts this web page to avoid Cross-Domain request restrictions
+	biblePath = "/class/csc3004/XMLBible/"
 }
 
+function removeExtraSpaces(verseText) {
+	// Remove space(s) after punctuation marks
+	verseText = verseText.replace(/\s+([.,?!:;])/g, "$1");
+
+	// Make sure only one space after punctuation (if followed by a word character)
+	verseText = verseText.replace(/([.,?!;])(?=\w)/g, "$1 ");
+	return verseText.trim();
+}
+
+
 function getresponse () {
-  // read input values from user
-  var b = document.getElementById('book').value;
-  var c = document.getElementById('chapter').value;
-  var v = parseInt(document.getElementById('verse').value);
+	// read input values from user
+	var book = document.getElementById('book').value;
+	var chapter = document.getElementById('chapter').value;
+	var verse = parseInt(document.getElementById('verse').value);
+	var totalVerses = parseInt(document.getElementById('totalVerses').value);
+	var bibleVersion = document.getElementById('bibleVersion').value;
 
-  // TODO: add code to select a version of the Bible based on user input
-  // (only KJV and WEB versions are available with XML files)
-  var XMLBook = biblePath + "kjv_by_book/" + b + ".xml";
-  xmlhttp.open("GET",XMLBook,false);
-  xmlhttp.send();
-  xmlDoc = xmlhttp.responseXML;
+  
+	// read input from drop down menu to determine translation
+	if (bibleVersion == 1){
+		var XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
+	}
+	else if (bibleVersion == 2){
+		var XMLBook = biblePath + "web_by_book/" + book + ".xml";
+	}
+	// Default value
+	else{
+		var XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
+	}
+  
+	xmlhttp.open("GET",XMLBook,false);
+	xmlhttp.send();
+	xmlDoc = xmlhttp.responseXML;
 
-  var bookInfo = "<h6>Book retrieved from file: " + XMLBook + "</h6>";
-  document.all.headArea.innerHTML = "<h1><font color=blue>XML Bible Demo Output</font></h1>"
-									+ bookInfo;
-  try {
-    document.all.responseArea.innerHTML = " ";
-    vtext = getVerse(b,c,v);
-	document.all.responseArea.innerHTML += "<p>" +vtext+ "</p>";
-  }
-  catch(error) {
-    if (error == "no chapter") {
-      document.all.responseArea.innerHTML += "<b><i>No such chapter " +c+ "</i></b>";
-    }      
-    if (error == "no verse") {
-        document.all.responseArea.innerHTML += "<b><i>No such verse " +v+ "</i></b>";
-    }
-  } 
+	// Diagnostic output
+	//var bookInfo = "<h6>Book retrieved from file: " + XMLBook + "</h6>";
+	//document.all.headArea.innerHTML = "<h1><font color=blue>XML Bible Demo Output</font></h1>"
+	//								+ bookInfo;
+	
+	try {
+		document.all.responseArea.innerHTML = " ";
+
+		// if nothing is entered into web page verse and totalVerses are NaN, b and c are empty strings
+		// Error handling for input data
+		if (book == "") {
+			throw "empty book";
+			}
+		if (chapter == "") {
+			throw "empty chapter";
+			}
+		if (isNaN(verse)) {
+			throw "empty verse";
+			}
+		if (verse > 176){
+			throw "no verse";
+		}
+		if (isNaN(totalVerses)) {
+			throw "empty total verses";
+		}
+		
+		let versesRetrieved = 0;	
+		while (versesRetrieved < totalVerses){
+	
+			// Chapter out of range handling
+			let currentChapter = xmlDoc.getElementsByTagName("chapter")[chapter - 1];
+			if (currentChapter == null) {
+				throw "no chapter";
+			}
+		
+			// Verse out of range handling
+			let totalVersesInChapter = currentChapter.getElementsByTagName("verse").length;
+			if (verse > totalVersesInChapter) {
+				throw "no verse";
+			}
+		
+			// +1 because array starts at 0 and chapters start at 1
+			let remainingVersesInChapter = currentChapter.getElementsByTagName("verse").length - verse + 1;
+		
+			// Get either the rest of verses in the chapter or the total request verses from the chapter
+			// if(verse remaing to retreive > verses reamining in chapter) 
+			let versesToGet = Math.min(remainingVersesInChapter, totalVerses - versesRetrieved);
+		
+			let bookName = xmlDoc.getElementsByTagName("book")[0].getAttribute("name");
+			let chapterNumber = currentChapter.getAttribute("number");
+
+			// Show a new heading when we enter a new chapter and for the first case
+			document.getElementById("responseArea").innerHTML += "<h3>" + bookName + " " + chapterNumber + "</h3>";
+	
+			// add all verses to response area
+			for (let i = 0; i < versesToGet; i++) {
+				let vtext = getVerse(book, chapter, verse + i);
+				document.getElementById("responseArea").innerHTML += "<p>" + vtext + "</p>";
+			}
+		
+			versesRetrieved += versesToGet;
+			verse = 1;   // Reset verse number for the next chapter
+			chapter++;   // Go to the next chapter
+		}
+	}
+	catch(error) {
+		if (error == "no book") {
+		document.all.responseArea.innerHTML += "<b><i>No such book " + book + "</i></b>";
+		} 
+		if (error == "empty book") {
+			document.all.responseArea.innerHTML += "<b><i>Please enter the book you wish to lookup.</i></b>";
+		} 
+		if (error == "no chapter") {
+			document.all.responseArea.innerHTML += "<b><i>No such chapter " + chapter + "</i></b>";
+		}   
+		if (error == "empty chapter") {
+			document.all.responseArea.innerHTML += "<b><i>Please enter the chapter you wish to lookup.</i></b>";
+		} 
+		if (error == "no verse") {
+			document.all.responseArea.innerHTML += "<b><i>No such verse " + verse + " in chapter " + chapter + "</i></b>";
+		}
+		if (error == "empty verse") {
+			document.all.responseArea.innerHTML += "<b><i>Please enter the verse you wish to lookup.</i></b>";
+		} 
+		if (error == "empty total verses") {
+			document.all.responseArea.innerHTML += "<b><i>Please enter the number of verses you wish to lookup.</i></b>";
+		}
+	} 
 } // end getResponse
 
-function getVerse(book,chapter,verse) {
-  var verseOutput = xmlDoc.getElementsByTagName("book")[0].getAttribute("name"); 
-  var c = xmlDoc.getElementsByTagName("chapter")[chapter-1];
-  if (c==null)
-	throw "no chapter";
-  verseOutput += " ";
-  verseOutput += c.getAttribute("number"); 
-  var v = c.getElementsByTagName("verse")[verse-1]
-  if (v==null)
-	throw "no verse";
-  verseOutput += ":";
-  verseOutput += v.getAttribute("number");
-  verseOutput += " ";
-  for (j=0; j < v.childNodes.length; j++) {
-	var nodeStr = getNodeString(v.childNodes[j]);
-	verseOutput += nodeStr;
-  }
-  return(verseOutput);
+function getVerse(tempBook,tempChapter,tempVerse) {
+	
+	var chapter = xmlDoc.getElementsByTagName("chapter")[tempChapter-1];
+	if (chapter == null)throw "no chapter";
+	
+	var verse = chapter.getElementsByTagName("verse")[tempVerse-1]
+	if (verse == null)throw "no verse";
+	
+	var verseOutput = verse.getAttribute("number") + " ";
+	
+	for (j = 0; j < verse.childNodes.length; j++) {
+		var nodeStr = getNodeString(verse.childNodes[j]);
+		verseOutput += nodeStr;
+	}
+	
+	return removeExtraSpaces(verseOutput);
 } // end getVerse
+
+
 
 function getNodeString(node) {
 	var result = "";
@@ -98,15 +192,37 @@ function getNodeString(node) {
 		else if (node.nodeName=="strongs") {
 		   if (node.childNodes[0] != null) {
 		     // show the text of the word that is inside the strong tag
-			 result += node.childNodes[0].nodeValue;
+			result += node.childNodes[0].nodeValue;
 		   }
+		   
 		   // TO DO: use hasAttribute(attributename) to determine
 		   // if the strongs tag has attributes named hebrew, greek, or number
 		   // When the attribute exists, add the strong number to the HTML result
 		   // as the contents of a <sub> tag, which will display it as a subscript
 		   // after the word.
+			// Check if the user wants to show Strong's references
+			var showStrongsBox = document.getElementById('showStrongs');
+			if (showStrongsBox && showStrongsBox.checked) {
+				
+				let subscript = "";
 
-	   }
+				 // Get number/greek/hebrew if present
+				if (node.hasAttribute("number")) {
+					subscript = node.getAttribute("number");
+				} else if (node.hasAttribute("hebrew")) {
+					subscript = node.getAttribute("hebrew");
+				} else if (node.hasAttribute("greek")) {
+					subscript = node.getAttribute("greek");
+				}
+
+				if (subscript !== "") {
+					result += "<sub>" + subscript + "</sub>";
+				}
+			}
+
+		result += " ";
+		}
+	   
 	}
 	return(result);
 } // end getNodeString
@@ -116,28 +232,53 @@ function getNodeString(node) {
 <body onLoad="setup()">
 <form onsubmit="return false"> <!-- submit button defines handler below:
                                     onclick="javascript: getresponse()" -->
-<h1>Bible Search from XML files</h1>
-<table>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Book Number</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="book" TYPE="text" MAXLENGTH=2  id=book></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Chapter</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="chapter" TYPE="text" MAXLENGTH=3  id=chapter></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Verse</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verse" TYPE="text" MAXLENGTH=3 id=verse></TD>
-</TR>
-</table>
-<p>
-<input type="submit" onclick="javascript: getresponse()" name="submit" value="Submit" />
-</p>
+	<h1>Bible Search from XML files</h1>
+	<table>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Bible Version</TD>
+			<TD ALIGN=LEFT VALIGN=TOP>
+				<SELECT NAME="bibleVersion" id=bibleVersion>
+					<OPTION value="1">King James Version</OPTION>
+					<OPTION value="2">World English Bible</OPTION>
+				</select>
+			</TD>
+		</TR>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Include Strong's References</TD>
+			<TD ALIGN=LEFT VALIGN=TOP>
+				<INPUT TYPE="checkbox" NAME="showStrongs" id="showStrongs" />
+			</TD>
+		</TR>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Book Number</TD>
+			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="book" TYPE="text" MAXLENGTH=2  id=book></TD>
+		</TR>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Chapter</TD>
+			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="chapter" TYPE="text" MAXLENGTH=3  id=chapter></TD>
+		</TR>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Verse</TD>
+			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verse" TYPE="text" MAXLENGTH=3 id=verse></TD>
+		</TR>
+		<TR>
+			<TD ALIGN=RIGHT VALIGN=TOP>Total Verses</TD>
+			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="totalVerses" TYPE="text" MAXLENGTH=3 id=totalVerses></TD>
+		</TR>
+	</table>
+	<p>
+		<input type="submit" onclick="javascript: getresponse()" name="submit" value="Submit" />
+	</p>
 </form>
 <div id = "headArea">
 </div>
-<div id = "responseArea">
-</div>
+<table>
+	<TR>
+		<div id = "responseArea">
+		</div>
+		<div id = "strongsArea">
+		</div>
+	</TR>
+</table>
 </body>
 </html>
