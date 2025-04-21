@@ -8,8 +8,152 @@
   PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
+	<style>
+		body {
+			background-color: #f3e8dc; /* warm tan parchment */
+			color: #2b1d0e; /* rich dark brown text */
+			font-family: "Georgia", serif;
+			text-align: center;
+			padding: 20px 40px;
+			box-sizing: border-box;
+		}
+
+		h1 {
+			display: inline-block;
+			color: #3e2a14; /* bold dark brown */
+			font-size: 2.5em;
+			font-weight: bold;
+			text-align: center;
+			margin: 30px auto;
+			padding: 15px 30px;
+			border: 2px solid #b98b5d;
+			background-color: #e8d6bd; /* soft parchment tan */
+			text-shadow: none;
+			letter-spacing: 1px;
+			border-radius: 10px;
+		}
+
+		h3 {
+			color: #4b2f17;
+			margin-top: 30px;
+		}
+
+		label, select, input[type="text"] {
+			color: #2b1d0e;
+			background-color: #fef9f2;
+			border: 1px solid #c7a980;
+			padding: 5px;
+			margin: 5px;
+		}
+
+		input[type="submit"] {
+			background-color: #d9b58d;
+			color: #2b1d0e;
+			border: 1px solid #a67c52;
+			padding: 6px 12px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		a {
+			color: #8b5d34;
+			text-decoration: none;
+		}
+
+		a:hover {
+			text-decoration: underline;
+		}
+
+		sub {
+			font-size: smaller;
+			vertical-align: sub;
+			color: #876e56;
+		}
+
+		table {
+			margin: 0 auto;
+		}
+
+		.non-scroll-box, .scrollable-box {
+			background-color: #fdf5e6;
+			border: 2px solid #b98b5d;
+			padding: 10px;
+			box-sizing: border-box;
+			color: #2b1d0e;
+		}
+
+		.non-scroll-box {
+			width: 400px;
+			min-height: 150px;
+		}
+
+		.scrollable-box {
+			width: 400px;
+			height: 300px;
+			overflow-y: scroll;
+			overflow-x: auto;
+		}
+
+		#responseArea {
+			background-color: #fff8eb;
+			border: 2px solid #b98b5d;
+			padding: 20px;
+			height: 100%;
+			min-height: 300px;
+			width: 100%;
+			min-width: 420px;
+			max-width: 800px;
+			overflow-y: auto;
+			box-sizing: border-box;
+			color: #2b1d0e;
+		}
+
+		#strongsArea h3, .scrollable-box h3 {
+			color: #4b2f17;
+			margin-bottom: 10px;
+		}
+
+		.main-wrapper {
+			max-width: 1200px;
+			margin: 0 auto;
+		}
+
+		.top-section {
+			display: flex;
+			justify-content: space-between;
+			gap: 40px;
+			align-items: flex-start;
+			margin-bottom: 40px;
+			flex-wrap: wrap;
+		}
+
+		.bottom-section {
+			display: flex;
+			justify-content: space-between;
+			gap: 40px;
+			margin-top: 40px;
+			align-items: stretch;
+		}
+
+		.bottom-section .left {
+			flex: 2;
+			min-width: 420px;
+			min-height: 300px;
+		}	
+
+		.bottom-section .right {
+			flex: 1;
+			min-width: 300px;
+			min-height: 300px;
+		}
+
+	</style>
+
 <title>XML Bible Lookup</title>
+
 <script type="text/javascript">
+
+
 function setup() {
 	if (window.XMLHttpRequest)
 	{// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -22,8 +166,10 @@ function setup() {
 	// location of XML Bible files, must be on same web server
 	// that hosts this web page to avoid Cross-Domain request restrictions
 	biblePath = "/class/csc3004/XMLBible/"
-}
+} //end setup
 
+
+// Cleans up verse text by removing unnecesary spaces around punctuation
 function removeExtraSpaces(verseText) {
 	// Remove space(s) after punctuation marks
 	verseText = verseText.replace(/\s+([.,?!:;])/g, "$1");
@@ -31,59 +177,225 @@ function removeExtraSpaces(verseText) {
 	// Make sure only one space after punctuation (if followed by a word character)
 	verseText = verseText.replace(/([.,?!;])(?=\w)/g, "$1 ");
 	return verseText.trim();
-}
+} //end removeExtraSpaces
 
 
-function getresponse () {
+// Gets the lexicon and displays it
+function showLexicon(strongsNum, event) {
+	if (event) event.preventDefault();
+
+	let isHebrew = strongsNum.startsWith("H");
+	let numberPart = strongsNum.replace(/[^\d]/g, "");  // removes all non-digigt chars from strongsNum
+	let fileIndex = Math.floor(Number(numberPart) / 100);  // finds file 1-99 in heb1.xml, and 100-199 in heb2.xml
+	let filePath = biblePath;
+	switch(isHebrew){
+		case true:
+			filePath += "heb_strongs/heb" + fileIndex + ".xml";
+			break;
+		case false:	
+			filePath += "greek_strongs/grk" + fileIndex + ".xml";
+			break;
+	}
+
+	let xhr = new XMLHttpRequest();
+	xhr.open("GET", filePath, true);
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState === 4 && xhr.status === 200) {
+			let xmlDoc = xhr.responseXML;
+			let items = xmlDoc.getElementsByTagName("item");
+			let targetItem = Array.from(items).find(item => item.getAttribute("id") === strongsNum);
+	
+			// Print out err msg
+			if (!targetItem) {
+				document.getElementById("strongsArea").innerHTML = "<p>No entry found for " + strongsNum + "</p>";
+				document.getElementById("concordanceArea").innerHTML = "";
+				return;
+			}
+
+			// Lexicon display
+			let title = targetItem.getElementsByTagName("title")[0]?.textContent || "";
+			let translit = targetItem.getElementsByTagName("transliteration")[0]?.textContent || "";
+			let pron = targetItem.getElementsByTagName("pronunciation")[0]?.textContent || "";
+			let descNode = targetItem.getElementsByTagName("description")[0];
+			let description = processDescription(descNode);
+
+			// Build lexicon output
+			let lexiconHTML = "<h3>" + title + " <span style=\"font-size:small\">(" + strongsNum + ")</span></h3>";
+			lexiconHTML += "<p><b>Transliteration:</b> " + translit + "<br/><b>Pronunciation:</b> <i>" + pron + "</i></p>";
+			lexiconHTML += "<div style=\"margin-top:10px;\"><b>Definition:</b><br/>" + description + "</div>";
+			document.getElementById("strongsArea").innerHTML = lexiconHTML;
+			displayConcordance(strongsNum);
+
+			// Concordance reference list
+			let refElements = targetItem.getElementsByTagName("ref");
+			let concordanceHTML = "<h3>References with " + strongsNum + "</h3><ul style='text-align:left'>";
+			for (let ref of refElements) {
+				let passage = ref.textContent;
+				concordanceHTML += '<li><a href="#" onclick="loadReference(\'' + passage + '\'); return false;"><sub>' + passage + '</sub></a></li>';
+			}
+			concordanceHTML += "</ul>";
+			document.getElementById("concordanceArea").innerHTML = concordanceHTML;
+		}
+	};
+	xhr.send();
+} //end showLexicon
+
+
+// Gets and displays all referbnces asscoiciated with strongs number
+function displayConcordance(strongsNum) {
+	const bibleBooks = [
+		"", // placeholder for index 0, So Genesis = Index 1
+		"Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
+		"Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel",
+		"1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra",
+		"Nehemiah", "Esther", "Job", "Psalms", "Proverbs",
+		"Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations",
+		"Ezekiel", "Daniel", "Hosea", "Joel", "Amos",
+		"Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk",
+		"Zephaniah", "Haggai", "Zechariah", "Malachi",
+		"Matthew", "Mark", "Luke", "John", "Acts",
+		"Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians",
+		"Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy",
+		"2 Timothy", "Titus", "Philemon", "Hebrews", "James",
+		"1 Peter", "2 Peter", "1 John", "2 John", "3 John",
+		"Jude", "Revelation"
+		];
+	
+	let isHebrew = strongsNum.startsWith("H");
+	let numberPart = strongsNum.replace(/[^\d]/g, ""); // removes all non-digigt chars from strongsNum
+	let filePath = biblePath + "bible_refs_of_strongs_numbers/"; 
+	switch(isHebrew){
+		case true:
+			filePath += "bible_refs_by_strongs_num_ot.xml";
+			break;
+		case false:	
+			filePath += "bible_refs_by_strongs_num_nt.xml";
+			break;
+	}
+
+	let xhr = new XMLHttpRequest();
+	xhr.open("GET", filePath, true);
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState === 4 && xhr.status === 200) {
+			let xmlDoc = xhr.responseXML;
+			let entries = xmlDoc.getElementsByTagName("item");
+			let match = null;
+
+			// Find matching strong's entry
+			for (let i = 0; i < entries.length; i++) {
+				if (entries[i].getAttribute("number") === numberPart) {
+					match = entries[i];
+					break;
+				}
+			}
+
+			if (match) {
+				let refs = match.getElementsByTagName("ref");
+				let concordancehtml = '<h3>Concordance: <sub>' + strongsNum + '</sub></h3><ul style="text-align:left">';
+				for (let i = 0; i < refs.length; i++) {
+					let b = refs[i].getAttribute("b");
+					let ch = refs[i].getAttribute("ch");
+					let v = refs[i].getAttribute("v");
+
+					let bookName = '<sub>' + (bibleBooks[parseInt(b, 10)] || 'Book ' + b) + '</sub>';
+					concordancehtml += '<li><a href="#" onclick="loadReferenceByNum(\'' + b + '\', \'' + ch + '\', \'' + v + '\'); return false;">' + bookName + ' <sub>' + ch + ':' + v + '</sub></a></li>';
+				}
+				concordancehtml += "</ul>";
+				document.getElementById("concordanceArea").innerHTML = concordancehtml;
+			} else {
+				document.getElementById("concordanceArea").innerHTML = '<p>No concordance entry found for <sub>' + strongsNum + '</sub></p>';
+			}
+		}
+	};
+	xhr.send();
+} // end displayConcordance
+
+
+// Sets input fields to book, chapter, and verse from concordance
+function loadReferenceByNum(bookNum, chapter, verse) {
+	document.getElementById("book").value = bookNum;
+	document.getElementById("chapter").value = chapter;
+	document.getElementById("verse").value = verse;
+	document.getElementById("totalVerses").value = 1;
+
+	getResponse();
+}// end loadReferenceByNum
+
+
+// Formats HTML with links to other strong's entries
+function processDescription(descNode) {
+	let result = "";
+	if (!descNode) return "";
+
+	for (let i = 0; i < descNode.childNodes.length; i++) {
+		let node = descNode.childNodes[i];
+		if (node.nodeType === 3) {
+			result += node.nodeValue;
+		} else if (node.nodeName === "link") {
+			let target = node.getAttribute("target");
+			result += '<a href="#" onclick="showLexicon(\'' + target + '\', event); return false;"><sub>' + target + '</sub></a>';
+		} else if (node.nodeName === "em") {
+			result += "<em>" + node.textContent + "</em>";
+		} else if (node.nodeName === "q") {
+			result += '"<i>' + node.textContent + "</i>\"";
+		} else {
+			// Fallback: just show text content of unknown tags
+			result += node.textContent;
+		}
+	}
+	return result;
+} //end processDescription
+
+
+// Fetches and displays the requested Bible passage from the selected XML file, handling errors and multi-verse lookups.
+function getResponse () {
 	// read input values from user
 	var book = document.getElementById('book').value;
 	var chapter = document.getElementById('chapter').value;
 	var verse = parseInt(document.getElementById('verse').value);
 	var totalVerses = parseInt(document.getElementById('totalVerses').value);
 	var bibleVersion = document.getElementById('bibleVersion').value;
-
   
 	// read input from drop down menu to determine translation
-	if (bibleVersion == 1){
-		var XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
-	}
-	else if (bibleVersion == 2){
-		var XMLBook = biblePath + "web_by_book/" + book + ".xml";
-	}
-	// Default value
-	else{
-		var XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
+	let XMLBook;
+	switch (bibleVersion) {
+		case "1":
+			XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
+			break;
+		case "2":
+			XMLBook = biblePath + "web_by_book/" + book + ".xml";
+			break;
+		default:
+			XMLBook = biblePath + "kjv_by_book/" + book + ".xml";
+			break;
 	}
   
 	xmlhttp.open("GET",XMLBook,false);
 	xmlhttp.send();
 	xmlDoc = xmlhttp.responseXML;
-
-	// Diagnostic output
-	//var bookInfo = "<h6>Book retrieved from file: " + XMLBook + "</h6>";
-	//document.all.headArea.innerHTML = "<h1><font color=blue>XML Bible Demo Output</font></h1>"
-	//								+ bookInfo;
+	const MAX_BOOKS = 66;
+	const MAX_VERSES = 176;
+	
 	
 	try {
 		document.all.responseArea.innerHTML = " ";
 
 		// if nothing is entered into web page verse and totalVerses are NaN, b and c are empty strings
 		// Error handling for input data
-		if (book == "") {
-			throw "empty book";
-			}
-		if (chapter == "") {
-			throw "empty chapter";
-			}
-		if (isNaN(verse)) {
-			throw "empty verse";
-			}
-		if (verse > 176){
-			throw "no verse";
-		}
-		if (isNaN(totalVerses)) {
-			throw "empty total verses";
-		}
+		if (book == "") throw "empty book";
+				
+		if (book < 0 || book > MAX_BOOKS) throw "no book";
+		
+		if (chapter == "") throw "empty chapter";
+		
+		if (chapter < 0) throw "no chapter";
+			
+		if (isNaN(verse)) throw "empty verse";
+			
+		if (verse < 0 || verse > MAX_VERSES) throw "no verse";
+			
+		if (isNaN(totalVerses)) throw "empty total verses";
+		
 		
 		let versesRetrieved = 0;	
 		while (versesRetrieved < totalVerses){
@@ -126,29 +438,30 @@ function getresponse () {
 	}
 	catch(error) {
 		if (error == "no book") {
-		document.all.responseArea.innerHTML += "<b><i>No such book " + book + "</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>No such book " + book + "</i></b>";
 		} 
 		if (error == "empty book") {
-			document.all.responseArea.innerHTML += "<b><i>Please enter the book you wish to lookup.</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>Please enter the book you wish to lookup.</i></b>";
 		} 
 		if (error == "no chapter") {
-			document.all.responseArea.innerHTML += "<b><i>No such chapter " + chapter + "</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>No such chapter " + chapter + "</i></b>";
 		}   
 		if (error == "empty chapter") {
-			document.all.responseArea.innerHTML += "<b><i>Please enter the chapter you wish to lookup.</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>Please enter the chapter you wish to lookup.</i></b>";
 		} 
 		if (error == "no verse") {
-			document.all.responseArea.innerHTML += "<b><i>No such verse " + verse + " in chapter " + chapter + "</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>No such verse " + verse + " in chapter " + chapter + "</i></b>";
 		}
 		if (error == "empty verse") {
-			document.all.responseArea.innerHTML += "<b><i>Please enter the verse you wish to lookup.</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>Please enter the verse you wish to lookup.</i></b>";
 		} 
 		if (error == "empty total verses") {
-			document.all.responseArea.innerHTML += "<b><i>Please enter the number of verses you wish to lookup.</i></b>";
+			document.getElementById("responseArea").innerHTML += "<b><i>Please enter the number of verses you wish to lookup.</i></b>";
 		}
 	} 
 } // end getResponse
 
+// Retrieves and formats a specific verse from the XML document by chapter and verse number.
 function getVerse(tempBook,tempChapter,tempVerse) {
 	
 	var chapter = xmlDoc.getElementsByTagName("chapter")[tempChapter-1];
@@ -168,7 +481,7 @@ function getVerse(tempBook,tempChapter,tempVerse) {
 } // end getVerse
 
 
-
+// Recursively processes a verse node and returns its formatted HTML string, including tags like <em>, <span>, and clickable Strong's references
 function getNodeString(node) {
 	var result = "";
 	if (node.nodeType == 3) { // type 3: text node
@@ -195,28 +508,40 @@ function getNodeString(node) {
 			result += node.childNodes[0].nodeValue;
 		   }
 		   
-		   // TO DO: use hasAttribute(attributename) to determine
-		   // if the strongs tag has attributes named hebrew, greek, or number
-		   // When the attribute exists, add the strong number to the HTML result
-		   // as the contents of a <sub> tag, which will display it as a subscript
-		   // after the word.
-			// Check if the user wants to show Strong's references
 			var showStrongsBox = document.getElementById('showStrongs');
 			if (showStrongsBox && showStrongsBox.checked) {
 				
 				let subscript = "";
+				let prefix = "";
+				let displaySubscript = "";
 
 				 // Get number/greek/hebrew if present
 				if (node.hasAttribute("number")) {
-					subscript = node.getAttribute("number");
-				} else if (node.hasAttribute("hebrew")) {
-					subscript = node.getAttribute("hebrew");
-				} else if (node.hasAttribute("greek")) {
-					subscript = node.getAttribute("greek");
+					let rawNums = node.getAttribute("number");
+					let num = rawNums.replace(/\D/g, "");
+					if (!num) return ""; // skip if result is empty
+					prefix = "H";
+					subscript = num;
+					displaySubscript = num;
+				} 
+				else if (node.hasAttribute("hebrew")) {
+					let num = node.getAttribute("hebrew");
+					prefix = "H";
+					subscript = num;
+					displaySubscript = num;
+				} 
+				else if (node.hasAttribute("greek")) {
+					let num = node.getAttribute("greek");
+					prefix = "G";
+					subscript = num;
+					displaySubscript = num;
 				}
-
+				
 				if (subscript !== "") {
-					result += "<sub>" + subscript + "</sub>";
+
+					const cleanSubscript = subscript.replace(/\D/g, "");
+					const fullStrongsNum = prefix + cleanSubscript;
+					result += "<a href='#' onclick='showLexicon(\"" + fullStrongsNum + "\", event); return false;'><sub>" + displaySubscript + "</sub></a>";
 				}
 			}
 
@@ -226,59 +551,78 @@ function getNodeString(node) {
 	}
 	return(result);
 } // end getNodeString
+
 </script>
+
+
 </head>
 
 <body onLoad="setup()">
-<form onsubmit="return false"> <!-- submit button defines handler below:
-                                    onclick="javascript: getresponse()" -->
-	<h1>Bible Search from XML files</h1>
-	<table>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Bible Version</TD>
-			<TD ALIGN=LEFT VALIGN=TOP>
-				<SELECT NAME="bibleVersion" id=bibleVersion>
-					<OPTION value="1">King James Version</OPTION>
-					<OPTION value="2">World English Bible</OPTION>
-				</select>
-			</TD>
-		</TR>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Include Strong's References</TD>
-			<TD ALIGN=LEFT VALIGN=TOP>
-				<INPUT TYPE="checkbox" NAME="showStrongs" id="showStrongs" />
-			</TD>
-		</TR>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Book Number</TD>
-			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="book" TYPE="text" MAXLENGTH=2  id=book></TD>
-		</TR>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Chapter</TD>
-			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="chapter" TYPE="text" MAXLENGTH=3  id=chapter></TD>
-		</TR>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Verse</TD>
-			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verse" TYPE="text" MAXLENGTH=3 id=verse></TD>
-		</TR>
-		<TR>
-			<TD ALIGN=RIGHT VALIGN=TOP>Total Verses</TD>
-			<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="totalVerses" TYPE="text" MAXLENGTH=3 id=totalVerses></TD>
-		</TR>
-	</table>
-	<p>
-		<input type="submit" onclick="javascript: getresponse()" name="submit" value="Submit" />
-	</p>
-</form>
-<div id = "headArea">
+<div class="main-wrapper">
+		<div style="text-align: center;">
+			<h1>Bible and Lexicon Lookup</h1>
+		</div>
+    <div class="top-section">
+     
+		<form onsubmit="return false" style="flex: 1; min-width: 320px; max-width: 500px;">
+        
+			<table>
+				<tr>
+					<td align="right">Bible Version</td>
+					<td align="left">
+						<select id="bibleVersion">
+							<option value="1">King James Version</option>
+							<option value="2">World English Bible</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td align="right">Show Strong's Lexicon</td>
+					<td align="left"><input type="checkbox" id="showStrongs" /></td>
+				</tr>
+				<tr>
+					<td align="right">Book</td>
+					<td align="left"><input type="text" maxlength="2" id="book" /></td>
+				</tr>
+				<tr>
+					<td align="right">Chapter</td>
+					<td align="left"><input type="text" maxlength="3" id="chapter" /></td>
+				</tr>
+				<tr>
+					<td align="right">Verse</td>
+					<td align="left"><input type="text" maxlength="3" id="verse" /></td>
+				</tr>
+				<tr>
+					<td align="right">Number of Verses</td>
+					<td align="left"><input type="text" maxlength="3" id="totalVerses" /></td>
+				</tr>
+			</table>
+			<p><input type="submit" onclick="getResponse()" value="Submit" /></p>
+		</form>
+
+      
+		<div style="flex: 1; min-width: 300px; max-width: 400px; display: flex; flex-direction: column; gap: 20px;">
+			<div id="strongsArea" class="non-scroll-box">
+				<h3>Lexicon</h3>
+				<p>Click a Strong's number to view details here.</p>
+			</div>
+		</div>
+    </div>
+
+    <div id="headArea" style="margin-bottom: 30px;"></div>
+
+    <div class="bottom-section">
+		<div class="left">
+			<div id="responseArea">
+			</div>
+		</div>
+		<div class="right">
+			<div id="concordanceArea" class="scrollable-box">
+				<h3>References</h3>
+				<p>Click a reference to view the verse.</p>
+			</div>
+		</div>
+    </div>
 </div>
-<table>
-	<TR>
-		<div id = "responseArea">
-		</div>
-		<div id = "strongsArea">
-		</div>
-	</TR>
-</table>
 </body>
 </html>
