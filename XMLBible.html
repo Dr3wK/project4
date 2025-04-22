@@ -213,9 +213,25 @@ function showLexicon(strongsNum, event) {
 			}
 
 			// Lexicon display
-			let title = targetItem.getElementsByTagName("title")[0]?.textContent || "";
-			let translit = targetItem.getElementsByTagName("transliteration")[0]?.textContent || "";
-			let pron = targetItem.getElementsByTagName("pronunciation")[0]?.textContent || "";
+			let title = "";
+			let translit = "";
+			let pron = "";
+
+			let titleElem = targetItem.getElementsByTagName("title")[0];
+			if (titleElem) {
+				title = titleElem.textContent;
+			}
+
+			let translitElem = targetItem.getElementsByTagName("transliteration")[0];
+			if (translitElem) {
+				translit = translitElem.textContent;
+			}
+
+			let pronElem = targetItem.getElementsByTagName("pronunciation")[0];
+			if (pronElem) {
+				pron = pronElem.textContent;
+			}
+			
 			let descNode = targetItem.getElementsByTagName("description")[0];
 			let description = processDescription(descNode);
 
